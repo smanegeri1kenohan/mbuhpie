@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Unduh Kartu Peserta</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome untuk Ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tesseract.js OCR Client-Side CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Animasi halus untuk transisi tab dan elemen */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.35s ease-out forwards;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col selection:bg-blue-900 selection:text-white">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40 border-b border-slate-800">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 gap-4">
+                <!-- Logo & Judul -->
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-600 p-2.5 rounded-xl shadow-inner flex items-center justify-center">
+                        <i class="fa-solid fa-id-card text-xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Portal Kartu Peserta</h1>
+                        <p class="text-xs text-slate-400">Sistem Distribusi & Verifikasi Mandiri</p>
+                    </div>
+                </div>
+
+                <!-- Navigasi Tab -->
+                <nav class="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/60 self-start sm:self-auto w-full sm:w-auto">
+                    <button id="tab-peserta" onclick="switchTab('peserta')" class="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-600 text-white shadow-sm">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span>Cari & Unduh</span>
+                    </button>
+                    <button id="tab-admin" onclick="switchTab('admin')" class="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-300 hover:text-white hover:bg-slate-700/50">
+                        <i id="admin-lock-icon" class="fa-solid fa-lock text-amber-400"></i>
+                        <span>Mode Admin</span>
+                        <span id="badge-count" class="ml-1 bg-slate-700 text-slate-200 text-xs px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+        <!-- ========================================== -->
+        <!-- VIEW 1: HALAMAN UTAMA (PESERTA)            -->
+        <!-- ========================================== -->
+        <section id="view-peserta" class="animate-fade-in">
+            <!-- Hero Banner / Intro -->
+            <div class="text-center max-w-2xl mx-auto mb-8">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-900 mb-3">
+                    <i class="fa-solid fa-circle-check text-blue-600"></i> Layanan Resmi Panitia
+                </span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-3">
+                    Unduh Kartu Tanda Peserta
+                </h2>
+                <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+                    Masukkan <strong>NISN (Nomor Kartu Peserta)</strong> Anda pada kolom di bawah ini untuk menampilkan pratinjau dan mengunduh kartu peserta dalam format gambar (JPG) beresolusi tinggi.
+                </p>
+            </div>
+
+            <!-- Form Pencarian Card -->
+            <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-md border border-slate-200/80 p-6 sm:p-8 mb-8">
+                <form id="search-form" onsubmit="handleSearch(event)" class="space-y-4">
+                    <div>
+                        <label for="input-nomor-peserta" class="block text-sm font-semibold text-slate-700 mb-2">
+                            NISN / Nomor Peserta
+                        </label>
+                        <div class="relative flex flex-col sm:flex-row gap-3">
+                            <div class="relative flex-grow">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-id-badge text-slate-400"></i>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    id="input-nomor-peserta" 
+                                    placeholder="Masukkan 10 digit NISN, cth: 0081234567" 
+                                    autocomplete="off"
+                                    required
+                                    class="block w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent focus:bg-white transition-all"
+                                >
+                            </div>
+                            <button 
+                                type="submit" 
+                                class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 hover:bg-blue-900 active:scale-[0.99] text-white font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+                            >
+                                <i class="fa-solid fa-search"></i>
+                                <span>Cari Kartu</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Tombol Cepat Nomor Contoh -->
+                <div class="mt-5 pt-4 border-t border-slate-100">
+                    <p class="text-xs font-medium text-slate-500 mb-2.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-flask text-blue-600"></i>
+                        <span>Coba NISN Contoh (Klik untuk uji coba cepat):</span>
+                    </p>
+                    <div id="quick-test-buttons" class="flex flex-wrap gap-2">
+                        <!-- Tombol contoh akan dirender dinamis oleh JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Area Hasil Pencarian: TIDAK DITEMUKAN -->
+            <div id="result-not-found" class="hidden max-w-xl mx-auto animate-fade-in">
+                <div class="bg-red-50 border border-red-200 rounded-2xl p-6 text-center shadow-sm">
+                    <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-red-900 mb-1">NISN / Nomor Peserta Tidak Ditemukan</h3>
+                    <p class="text-sm text-red-700 leading-relaxed">
+                        NISN <span id="not-found-query" class="font-mono font-bold underline"></span> tidak terdaftar dalam sistem kami. Pastikan 10 digit NISN yang dimasukkan sudah sesuai dengan kartu peserta Anda.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Area Hasil Pencarian: DITEMUKAN -->
+            <div id="result-found" class="hidden max-w-2xl mx-auto animate-fade-in">
+                <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                    <!-- Header Kartu Hasil -->
+                    <div class="bg-slate-900 px-6 py-4 flex flex-wrap items-center justify-between gap-2 text-white">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="font-semibold text-sm sm:text-base">Kartu Peserta Ditemukan</span>
+                        </div>
+                        <span id="found-badge-nomor" class="font-mono text-xs bg-slate-800 border border-slate-700 px-3 py-1 rounded-lg text-blue-300 font-semibold">
+                            NISN: -
+                        </span>
+                    </div>
+
+                    <!-- Preview Gambar Kartu -->
+                    <div class="p-6 sm:p-8 bg-slate-100/70 flex flex-col items-center justify-center border-b border-slate-200">
+                        <div class="relative group max-w-full rounded-xl overflow-hidden shadow-md border border-slate-300 bg-white">
+                            <img 
+                                id="preview-card-image" 
+                                src="" 
+                                alt="Pratinjau Kartu Peserta" 
+                                class="max-h-[460px] w-auto object-contain mx-auto block"
+                            >
+                        </div>
+                        <p class="text-xs text-slate-500 mt-3 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-slate-400"></i>
+                            <span>Periksa kembali kesesuaian NISN dan identitas pada kartu sebelum mengunduh.</span>
+                        </p>
+                    </div>
+
+                    <!-- Action Footer (Tombol Download) -->
+                    <div class="p-6 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="text-center sm:text-left">
+                            <p class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Keterangan / Nama</p>
+                            <p id="found-nama-peserta" class="text-base font-bold text-slate-900">-</p>
+                        </div>
+                        <button 
+                            id="btn-download-jpg"
+                            onclick="downloadCurrentCard()"
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                        >
+                            <i class="fa-solid fa-download text-lg"></i>
+                            <span>Download Kartu (JPG)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- VIEW 2: LOGIN MODE ADMIN                   -->
+        <!-- ========================================== -->
+        <section id="view-admin-login" class="hidden animate-fade-in">
+            <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                <div class="bg-slate-900 px-6 py-6 text-center text-white">
+                    <div class="w-14 h-14 bg-blue-600/20 border border-blue-500/40 text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                        <i class="fa-solid fa-shield-halved text-2xl"></i>
+                    </div>
+                    <h2 class="text-xl font-extrabold tracking-tight">Autentikasi Mode Admin</h2>
+                    <p class="text-xs text-slate-400 mt-1">Silakan masuk untuk mengelola & memindai kartu peserta</p>
+                </div>
+
+                <div class="p-6 sm:p-8">
+                    <form id="admin-login-form" onsubmit="handleAdminLogin(event)" class="space-y-4">
+                        <div>
+                            <label for="login-username" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                                Username
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-user text-slate-400 text-sm"></i>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    id="login-username" 
+                                    placeholder="Masukkan username admin" 
+                                    required
+                                    autocomplete="username"
+                                    class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                                >
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="login-password" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                                Password
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-lock text-slate-400 text-sm"></i>
+                                </div>
+                                <input 
+                                    type="password" 
+                                    id="login-password" 
+                                    placeholder="Masukkan password admin" 
+                                    required
+                                    autocomplete="current-password"
+                                    class="w-full pl-10 pr-11 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                                >
+                                <button 
+                                    type="button" 
+                                    onclick="togglePasswordVisibility()"
+                                    title="Lihat/Sembunyikan Password"
+                                    class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 cursor-pointer"
+                                >
+                                    <i id="password-eye-icon" class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="login-error-msg" class="hidden text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-3.5 py-2.5 rounded-xl flex items-center gap-2">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>Username atau password tidak valid!</span>
+                        </div>
+
+                        <button 
+                            type="submit" 
+                            class="w-full py-3 px-4 bg-slate-900 hover:bg-blue-900 active:scale-[0.99] text-white font-semibold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                        >
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            <span>Masuk ke Panel Admin</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- VIEW 3: DASHBOARD ADMIN (AUTO-OCR NISN)    -->
+        <!-- ========================================== -->
+        <section id="view-admin" class="hidden animate-fade-in">
+            <!-- Top Admin Bar -->
+            <div class="mb-6 bg-white p-4 sm:px-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-user-check text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-lg sm:text-xl font-extrabold text-slate-900">Panel Admin — Auto-Deteksi NISN</h2>
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Aktif</span>
+                        </div>
+                        <p class="text-xs text-slate-500">
+                            Cukup unggah gambar kartu peserta (JPG/PNG), sistem OCR otomatis mengekstrak NISN sebagai nomor peserta.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 self-start sm:self-auto">
+                    <button 
+                        onclick="resetDefaultData()" 
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                    >
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Reset Contoh</span>
+                    </button>
+                    <button 
+                        onclick="handleAdminLogout()" 
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                    >
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel Integrasi Google Drive -->
+            <div class="mb-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-sky-400">
+                            <i class="fa-brands fa-google-drive text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm sm:text-base font-bold flex items-center gap-2">
+                                <span>Penyimpanan Cloud Google Drive</span>
+                                <span id="gdrive-status-badge" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
+                                    Mode Lokal
+                                </span>
+                            </h3>
+                            <p class="text-xs text-slate-300">Hubungkan ke Google Drive Anda agar peserta dari perangkat lain dapat mengunduh kartu.</p>
+                        </div>
+                    </div>
+                    <button 
+                        type="button" 
+                        onclick="openGasModal()" 
+                        class="inline-flex items-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-xs transition-all cursor-pointer"
+                    >
+                        <i class="fa-solid fa-code"></i>
+                        <span>Lihat Kode Google Apps Script</span>
+                    </button>
+                </div>
+
+                <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 items-end">
+                    <div class="lg:col-span-6">
+                        <label for="gdrive-webapp-url" class="block text-xs font-bold text-slate-700 mb-1.5">
+                            URL Web App Google Apps Script <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                            type="url" 
+                            id="gdrive-webapp-url" 
+                            placeholder="https://script.google.com/macros/s/AKfycb.../exec" 
+                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
+                        >
+                    </div>
+                    <div class="lg:col-span-3">
+                        <label for="gdrive-folder-id" class="block text-xs font-bold text-slate-700 mb-1.5">
+                            ID Folder Google Drive (Opsional)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="gdrive-folder-id" 
+                            placeholder="Contoh: 1A2b3C4d5E6f..." 
+                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
+                        >
+                    </div>
+                    <div class="lg:col-span-3 flex items-center gap-2">
+                        <button 
+                            type="button" 
+                            onclick="saveGoogleDriveConfig()" 
+                            class="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                            <i class="fa-solid fa-plug-circle-check"></i>
+                            <span>Simpan & Aktifkan</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            onclick="testGoogleDriveConnection()" 
+                            title="Uji Koneksi"
+                            class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-all cursor-pointer"
+                        >
+                            <i class="fa-solid fa-wifi"></i>
+                        </button>
+                        <button 
+                            type="button" 
+                            onclick="disconnectGoogleDrive()" 
+                            title="Putuskan Koneksi (Kembali ke Lokal)"
+                            class="py-2.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-xl border border-red-200 transition-all cursor-pointer"
+                        >
+                            <i class="fa-solid fa-link-slash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Kolom Kiri: Dropzone Upload Gambar & OCR Scanner -->
+                <div class="lg:col-span-5">
+                    <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sticky top-24">
+                        <h3 class="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-blue-600"></i>
+                            <span>Unggah Kartu Peserta (Auto-Scan NISN)</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4 pb-3 border-b border-slate-100">
+                            Tidak perlu mengetik manual! Pilih satu atau banyak gambar kartu sekaligus.
+                        </p>
+
+                        <!-- Drag & Drop Zone -->
+                        <div 
+                            id="ocr-dropzone"
+                            ondragover="handleDragOver(event)"
+                            ondragleave="handleDragLeave(event)"
+                            ondrop="handleDropFiles(event)"
+                            onclick="document.getElementById('admin-multi-file').click()"
+                            class="flex flex-col items-center justify-center w-full min-h-[210px] border-2 border-dashed border-blue-300 hover:border-blue-600 rounded-2xl bg-blue-50/40 hover:bg-blue-50 transition-all cursor-pointer p-6 text-center group"
+                        >
+                            <div class="w-14 h-14 rounded-2xl bg-blue-100 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center mb-3 transition-colors shadow-xs">
+                                <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                            </div>
+                            <p class="text-sm font-bold text-slate-800">
+                                Klik untuk Pilih atau Seret Gambar Kartu ke Sini
+                            </p>
+                            <p class="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
+                                Mendukung format <strong>JPG / PNG</strong> (bisa unggah banyak file sekaligus). Sistem akan langsung membaca <strong>NISN</strong> pada gambar.
+                            </p>
+                            <input 
+                                type="file" 
+                                id="admin-multi-file" 
+                                accept="image/jpeg, image/png, image/jpg" 
+                                multiple
+                                onchange="handleFilesSelected(event)"
+                                class="hidden"
+                            >
+                        </div>
+
+                        <!-- Status Progres Pemindaian OCR -->
+                        <div id="ocr-progress-box" class="hidden mt-5 p-4 rounded-xl bg-slate-900 text-white shadow-inner">
+                            <div class="flex items-center justify-between text-xs font-semibold mb-2">
+                                <span class="flex items-center gap-2 text-blue-300">
+                                    <i class="fa-solid fa-spinner fa-spin"></i>
+                                    <span id="ocr-status-text">Memindai NISN dari gambar...</span>
+                                </span>
+                                <span id="ocr-percent-text" class="font-mono text-emerald-400">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+                                <div id="ocr-progress-bar" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-2 rounded-full transition-all duration-200" style="width: 0%"></div>
+                            </div>
+                            <p id="ocr-queue-info" class="text-[11px] text-slate-400 mt-2">
+                                Memproses antrean gambar...
+                            </p>
+                        </div>
+
+                        <!-- Tips Akurasi OCR -->
+                        <div class="mt-5 p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/70 text-xs text-amber-900 space-y-1">
+                            <p class="font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-lightbulb text-amber-500"></i> Informasi Deteksi Otomatis:
+                            </p>
+                            <ul class="list-disc list-inside text-[11px] text-amber-800 space-y-0.5">
+                                <li>Sistem memprioritaskan <strong>10 digit angka NISN</strong> yang tertera pada kartu.</li>
+                                <li>Jika OCR kurang tepat karena resolusi gambar rendah, klik ikon <strong>Edit (<i class="fa-solid fa-pen"></i>)</strong> pada daftar di samping untuk mengoreksi NISN.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan: Daftar Kartu Tersimpan & Verifikasi NISN -->
+                <div class="lg:col-span-7">
+                    <div class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+                        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-database text-slate-600"></i>
+                                <span>Daftar Kartu & Hasil Deteksi NISN</span>
+                            </h3>
+                            <span id="admin-total-label" class="text-xs font-semibold bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                                0 Kartu Tersimpan
+                            </span>
+                        </div>
+
+                        <!-- List Container -->
+                        <div id="admin-cards-list" class="divide-y divide-slate-100 max-h-[640px] overflow-y-auto">
+                            <!-- Item kartu dirender via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-auto">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p>&copy; 2026 Portal Distribusi Kartu Peserta. Seluruh hak cipta dilindungi.</p>
+            <p class="flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+                <span>Proses unduh langsung & aman di perangkat Anda</span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- ========================================== -->
+    <!-- MODAL KODE GOOGLE APPS SCRIPT (Code.gs)    -->
+    <!-- ========================================== -->
+    <div id="gas-code-modal" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-brands fa-google-drive text-sky-400 text-lg"></i>
+                    <h3 class="font-bold text-sm sm:text-base">Panduan & Kode Google Apps Script (Backend Drive)</h3>
+                </div>
+                <button onclick="closeGasModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-700">
+                <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 space-y-1.5">
+                    <p class="font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-list-ol text-blue-600"></i> Langkah Pemasangan di Akun Google Anda (Gratis):
+                    </p>
+                    <ol class="list-decimal list-inside space-y-1 text-xs leading-relaxed">
+                        <li>Buka <a href="https://script.google.com" target="_blank" rel="noopener" class="underline font-bold text-blue-700">script.google.com</a> dan login menggunakan akun Google Drive Anda.</li>
+                        <li>Klik <strong>Project Baru (New Project)</strong>, hapus semua kode bawaan, lalu tempel kode di bawah ini.</li>
+                        <li>Klik tombol <strong>Deploy &rarr; New deployment</strong>, pilih jenis <strong>Web app</strong>.</li>
+                        <li>Pada bagian <em>Execute as</em> pilih <strong>Me (email Anda)</strong>, dan pada <em>Who has access</em> pilih <strong>Anyone</strong>.</li>
+                        <li>Klik <strong>Deploy</strong>, izinkan akses Google Drive, lalu salin <strong>Web app URL</strong> ke kolom konfigurasi di Panel Admin.</li>
+                    </ol>
+                </div>
+
+                <div class="relative">
+                    <div class="flex items-center justify-between bg-slate-800 text-slate-300 px-4 py-2 rounded-t-xl text-xs font-mono">
+                        <span>Code.gs</span>
+                        <button onclick="copyGasScript()" class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-sans font-semibold text-xs cursor-pointer">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Salin Kode</span>
+                        </button>
+                    </div>
+                    <pre id="gas-script-content" class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl text-xs font-mono overflow-x-auto leading-relaxed select-all">// Kode Google Apps Script untuk Portal Unduh Kartu Peserta
+const DEFAULT_FOLDER_NAME = "Kartu_Peserta_Portal";
+
+function getTargetFolder(folderId) {
+  if (folderId && folderId.trim() !== "") {
+    try {
+      return DriveApp.getFolderById(folderId.trim());
+    } catch (e) {}
+  }
+  const folders = DriveApp.getFoldersByName(DEFAULT_FOLDER_NAME);
+  return folders.hasNext() ? folders.next() : DriveApp.createFolder(DEFAULT_FOLDER_NAME);
+}
+
+// Menerima unggahan kartu JPG dari Panel Admin
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const nisn = String(data.nisn || "").trim();
+    const nama = String(data.nama || "Peserta").trim();
+    const folderId = data.folderId || "";
+    const base64Data = data.imageData.split(",")[1];
+
+    const folder = getTargetFolder(folderId);
+    const fileName = nisn + ".jpg";
+
+    // Hapus file lama dengan NISN yang sama jika sudah ada
+    const existing = folder.getFilesByName(fileName);
+    while (existing.hasNext()) {
+      existing.next().setTrashed(true);
+    }
+
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), "image/jpeg", fileName);
+    const file = folder.createFile(blob);
+    file.setDescription(JSON.stringify({ nisn: nisn, nama: nama }));
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success",
+      nisn: nisn,
+      fileId: file.getId()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Mengambil gambar kartu berdasarkan NISN untuk diunduh peserta (atau tes koneksi)
+function doGet(e) {
+  try {
+    const action = (e.parameter.action || "search").toLowerCase();
+    const folderId = e.parameter.folderId || "";
+    const folder = getTargetFolder(folderId);
+
+    if (action === "ping") {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "ok",
+        folderName: folder.getName()
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const nisn = String(e.parameter.nisn || "").trim();
+    if (!nisn) {
+      return ContentService.createTextOutput(JSON.stringify({ status: "not_found" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const files = folder.getFilesByName(nisn + ".jpg");
+    if (!files.hasNext()) {
+      return ContentService.createTextOutput(JSON.stringify({ status: "not_found" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const file = files.next();
+    let meta = { nisn: nisn, nama: "Peserta NISN " + nisn };
+    try {
+      if (file.getDescription()) meta = JSON.parse(file.getDescription());
+    } catch (err) {}
+
+    const base64 = Utilities.base64Encode(file.getBlob().getBytes());
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "found",
+      nisn: meta.nisn || nisn,
+      nama: meta.nama || ("Peserta NISN " + nisn),
+      imageData: "data:image/jpeg;base64," + base64
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}</pre>
+                </div>
+            </div>
+
+            <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+                <button onclick="closeGasModal()" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl cursor-pointer">
+                    Tutup Panduan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT LOGIC                           -->
+    <!-- ========================================== -->
+    <script>
+        // Kunci penyimpanan & kredensial admin
+        const STORAGE_KEY = 'portal_kartu_peserta_db_v2';
+        const GDRIVE_CONFIG_KEY = 'portal_gdrive_config_v1';
+        const ADMIN_SESSION_KEY = 'portal_admin_logged_in_v1';
+        const ADMIN_CREDENTIALS = {
+            username: 'admin',
+            password: 'admin123'
+        };
+
+        // State aplikasi
+        let cardsDatabase = [];
+        let gdriveConfig = { webAppUrl: '', folderId: '' };
+        let currentFoundCard = null;
+        let isAdminLoggedIn = false;
+        let isOcrProcessing = false;
+        let editingIndex = null;
+
+        // Data awal untuk contoh bawaan dengan NISN 10 digit yang jelas terbaca OCR
+        const SAMPLE_PARTICIPANTS = [
+            {
+                nomor: '0081234567',
+                nama: 'ANDI PRATAMA WIJAYA',
+                sesi: 'Sesi 1 • 08.00 - 10.00 WIB',
+                ruang: 'Gedung A - Ruang 101',
+                warnaTema: '#1e3a8a' // Navy Blue
+            },
+            {
+                nomor: '0087654321',
+                nama: 'SITI NURHALIZA PUTRI',
+                sesi: 'Sesi 1 • 08.00 - 10.00 WIB',
+                ruang: 'Gedung A - Ruang 102',
+                warnaTema: '#0f172a' // Slate Dark
+            },
+            {
+                nomor: '0091122334',
+                nama: 'RAHMAT HIDAYATULLAH',
+                sesi: 'Sesi 2 • 13.00 - 15.00 WIB',
+                ruang: 'Gedung B - Lab Komputer 2',
+                warnaTema: '#065f46' // Deep Emerald
+            }
+        ];
+
+        /**
+         * Generator Gambar Kartu Peserta Otomatis menggunakan HTML5 Canvas
+         * Mencetak label NISN dan 10 digit angka dengan kontras tinggi agar mudah dideteksi OCR
+         */
+        function generateDummyCardJPG(participant) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 850;
+            canvas.height = 540;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Background Dasar Putih Bersih (Kontras tinggi untuk OCR)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Header Kartu
+            ctx.fillStyle = participant.warnaTema || '#1e3a8a';
+            ctx.fillRect(0, 0, canvas.width, 115);
+
+            // Garis aksen emas/kuning di bawah header
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(0, 115, canvas.width, 8);
+
+            // Logo Bulat Dekoratif di Header
+            ctx.beginPath();
+            ctx.arc(65, 58, 32, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 22px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('KP', 65, 66);
+
+            // Teks Judul Header
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px Inter, sans-serif';
+            ctx.fillText('KARTU TANDA PESERTA UJIAN / KEGIATAN', 115, 52);
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '500 15px Inter, sans-serif';
+            ctx.fillText('PANITIA SELEKSI NASIONAL • TAHUN AKADEMIK 2026', 115, 80);
+
+            // 3. Kotak Foto Placeholder di Kiri
+            const photoX = 45;
+            const photoY = 155;
+            const photoW = 170;
+            const photoH = 220;
+
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(photoX, photoY, photoW, photoH);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(photoX, photoY, photoW, photoH);
+
+            // Siluet Orang di dalam Foto
+            ctx.fillStyle = '#94a3b8';
+            ctx.beginPath();
+            ctx.arc(photoX + photoW / 2, photoY + 75, 34, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(photoX + photoW / 2, photoY + 195, 62, Math.PI, 0);
+            ctx.fill();
+
+            ctx.fillStyle = '#475569';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('FOTO PESERTA 3x4', photoX + photoW / 2, photoY + photoH - 12);
+
+            // 4. Informasi Detail Peserta di Tengah
+            const infoX = 245;
+            ctx.textAlign = 'left';
+
+            // Kotak Highlight NISN (Teks sangat jelas agar OCR mudah membaca)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(infoX, 155, 390, 72);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(infoX, 155, 390, 72);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.fillText('NISN / NOMOR PESERTA', infoX + 16, 180);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 30px Arial, sans-serif';
+            ctx.fillText(participant.nomor, infoX + 16, 214);
+
+            // Nama Lengkap
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.fillText('NAMA LENGKAP PESERTA', infoX, 258);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 21px Inter, sans-serif';
+            ctx.fillText(participant.nama, infoX, 285);
+
+            // Jadwal / Sesi
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.fillText('JADWAL PELAKSANAAN', infoX, 320);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '600 16px Inter, sans-serif';
+            ctx.fillText(participant.sesi, infoX, 344);
+
+            // Lokasi / Ruangan
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.fillText('LOKASI / RUANGAN', infoX, 378);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '600 16px Inter, sans-serif';
+            ctx.fillText(participant.ruang, infoX, 402);
+
+            // 5. QR Code Dekoratif di Kanan
+            const qrX = 665;
+            const qrY = 155;
+            const qrSize = 140;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(qrX, qrY, qrSize, qrSize);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(qrX, qrY, qrSize, qrSize);
+
+            ctx.fillStyle = '#0f172a';
+            const grid = 10;
+            const cellSize = (qrSize - 20) / grid;
+            let seed = parseInt(participant.nomor.replace(/\D/g, '').slice(-6)) || 12345;
+            for (let r = 0; r < grid; r++) {
+                for (let c = 0; c < grid; c++) {
+                    const isCorner = (r < 3 && c < 3) || (r < 3 && c > grid - 4) || (r > grid - 4 && c < 3);
+                    seed = (seed * 9301 + 49297) % 233280;
+                    const rnd = seed / 233280;
+                    if (isCorner || rnd > 0.48) {
+                        ctx.fillRect(qrX + 10 + c * cellSize, qrY + 10 + r * cellSize, cellSize - 1, cellSize - 1);
+                    }
+                }
+            }
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '600 11px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('SCAN VERIFIKASI', qrX + qrSize / 2, qrY + qrSize + 18);
+
+            // 6. Footer Kartu & Catatan
+            ctx.fillStyle = '#f1f5f9';
+            ctx.fillRect(0, 445, canvas.width, 95);
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.beginPath();
+            ctx.moveTo(0, 445);
+            ctx.lineTo(canvas.width, 445);
+            ctx.stroke();
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#475569';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.fillText('PERHATIAN:', 45, 475);
+
+            ctx.font = '400 12px Inter, sans-serif';
+            ctx.fillText('1. Kartu ini wajib dicetak atau ditunjukkan kepada pengawas saat registrasi.', 45, 496);
+            ctx.fillText('2. Peserta wajib membawa kartu identitas asli (KTP/Kartu Pelajar) yang masih berlaku.', 45, 515);
+
+            // Stempel Terverifikasi
+            ctx.save();
+            ctx.translate(725, 492);
+            ctx.rotate(-0.08);
+            ctx.strokeStyle = '#059669';
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(-65, -20, 130, 40);
+            ctx.fillStyle = '#059669';
+            ctx.font = '800 15px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('TERVERIFIKASI', 0, 5);
+            ctx.restore();
+
+            // Border luar kartu
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+            return canvas.toDataURL('image/jpeg', 0.94);
+        }
+
+        /**
+         * Inisialisasi Database & Cek Status Login Admin
+         */
+        function initApp() {
+            // Cek sesi login admin
+            isAdminLoggedIn = sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+            updateAdminNavIcon();
+
+            // Muat konfigurasi Google Drive jika ada
+            try {
+                const savedDrive = localStorage.getItem(GDRIVE_CONFIG_KEY);
+                if (savedDrive) {
+                    gdriveConfig = JSON.parse(savedDrive);
+                }
+            } catch (e) {
+                console.error('Gagal memuat konfigurasi Google Drive:', e);
+            }
+            updateGDriveUI();
+
+            // Muat data kartu dari localStorage
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    cardsDatabase = JSON.parse(stored);
+                } else {
+                    seedDefaultData();
+                }
+            } catch (e) {
+                console.error('Gagal membaca localStorage:', e);
+                seedDefaultData();
+            }
+            updateUI();
+        }
+
+        /**
+         * Mengisi ulang data contoh bawaan
+         */
+        function seedDefaultData() {
+            cardsDatabase = SAMPLE_PARTICIPANTS.map(p => ({
+                nomor: p.nomor,
+                nama: p.nama,
+                imageData: generateDummyCardJPG(p),
+                isSample: true,
+                ocrConfidence: 100,
+                createdAt: new Date().toISOString()
+            }));
+            saveDatabase();
+        }
+
+        /**
+         * Menyimpan state cardsDatabase ke localStorage
+         */
+        function saveDatabase() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(cardsDatabase));
+            } catch (e) {
+                showToast('Penyimpanan browser penuh! Hapus beberapa kartu lama agar dapat menyimpan gambar baru.', 'error');
+            }
+            updateUI();
+        }
+
+        /**
+         * Memperbarui ikon gembok pada tab Mode Admin
+         */
+        function updateAdminNavIcon() {
+            const lockIcon = document.getElementById('admin-lock-icon');
+            if (!lockIcon) return;
+            if (isAdminLoggedIn) {
+                lockIcon.className = 'fa-solid fa-unlock text-emerald-400';
+            } else {
+                lockIcon.className = 'fa-solid fa-lock text-amber-400';
+            }
+        }
+
+        /**
+         * Memperbarui seluruh elemen UI yang bergantung pada database
+         */
+        function updateUI() {
+            document.getElementById('badge-count').textContent = cardsDatabase.length;
+            document.getElementById('admin-total-label').textContent = `${cardsDatabase.length} Kartu Tersimpan`;
+
+            // Render tombol coba cepat di halaman peserta
+            const quickContainer = document.getElementById('quick-test-buttons');
+            quickContainer.innerHTML = '';
+
+            if (cardsDatabase.length === 0) {
+                quickContainer.innerHTML = `<span class="text-xs text-slate-400 italic">Belum ada data kartu. Unggah kartu melalui Mode Admin.</span>`;
+            } else {
+                cardsDatabase.slice(0, 5).forEach(card => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer';
+                    btn.innerHTML = `<span>${escapeHTML(card.nomor)}</span>`;
+                    btn.onclick = () => {
+                        document.getElementById('input-nomor-peserta').value = card.nomor;
+                        performSearch(card.nomor);
+                    };
+                    quickContainer.appendChild(btn);
+                });
+            }
+
+            renderAdminList();
+        }
+
+        /**
+         * Navigasi antar Tab (Peserta vs Admin dengan proteksi Login)
+         */
+        function switchTab(tabName) {
+            const viewPeserta = document.getElementById('view-peserta');
+            const viewAdminLogin = document.getElementById('view-admin-login');
+            const viewAdmin = document.getElementById('view-admin');
+            const btnPeserta = document.getElementById('tab-peserta');
+            const btnAdmin = document.getElementById('tab-admin');
+
+            if (tabName === 'peserta') {
+                viewPeserta.classList.remove('hidden');
+                viewAdminLogin.classList.add('hidden');
+                viewAdmin.classList.add('hidden');
+
+                btnPeserta.className = 'flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-600 text-white shadow-sm';
+                btnAdmin.className = 'flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-300 hover:text-white hover:bg-slate-700/50';
+            } else {
+                viewPeserta.classList.add('hidden');
+
+                if (isAdminLoggedIn) {
+                    viewAdminLogin.classList.add('hidden');
+                    viewAdmin.classList.remove('hidden');
+                } else {
+                    viewAdmin.classList.add('hidden');
+                    viewAdminLogin.classList.remove('hidden');
+                    document.getElementById('login-error-msg').classList.add('hidden');
+                }
+
+                btnAdmin.className = 'flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-600 text-white shadow-sm';
+                btnPeserta.className = 'flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-300 hover:text-white hover:bg-slate-700/50';
+            }
+        }
+
+        /**
+         * ==========================================
+         * LOGIKA LOGIN & LOGOUT ADMIN
+         * ==========================================
+         */
+        function togglePasswordVisibility() {
+            const pwdInput = document.getElementById('login-password');
+            const eyeIcon = document.getElementById('password-eye-icon');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                eyeIcon.className = 'fa-regular fa-eye-slash';
+            } else {
+                pwdInput.type = 'password';
+                eyeIcon.className = 'fa-regular fa-eye';
+            }
+        }
+
+        function handleAdminLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errorBox = document.getElementById('login-error-msg');
+
+            if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+                isAdminLoggedIn = true;
+                sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+                errorBox.classList.add('hidden');
+                document.getElementById('admin-login-form').reset();
+                updateAdminNavIcon();
+                switchTab('admin');
+                showToast('Login berhasil! Selamat datang di Panel Admin.', 'success');
+            } else {
+                errorBox.classList.remove('hidden');
+                showToast('Gagal masuk: Username atau password salah.', 'error');
+            }
+        }
+
+        function handleAdminLogout() {
+            isAdminLoggedIn = false;
+            sessionStorage.removeItem(ADMIN_SESSION_KEY);
+            editingIndex = null;
+            updateAdminNavIcon();
+            switchTab('admin');
+            showToast('Anda telah keluar dari Mode Admin.', 'info');
+        }
+
+        /**
+         * ==========================================
+         * LOGIKA INTEGRASI GOOGLE DRIVE (APPS SCRIPT)
+         * ==========================================
+         */
+        function updateGDriveUI() {
+            const urlInput = document.getElementById('gdrive-webapp-url');
+            const folderInput = document.getElementById('gdrive-folder-id');
+            const badge = document.getElementById('gdrive-status-badge');
+
+            if (urlInput) urlInput.value = gdriveConfig.webAppUrl || '';
+            if (folderInput) folderInput.value = gdriveConfig.folderId || '';
+
+            if (badge) {
+                if (gdriveConfig.webAppUrl) {
+                    badge.textContent = 'Terhubung ke Google Drive';
+                    badge.className = 'text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30';
+                } else {
+                    badge.textContent = 'Mode Lokal';
+                    badge.className = 'text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-700 text-slate-300';
+                }
+            }
+        }
+
+        function saveGoogleDriveConfig() {
+            const url = document.getElementById('gdrive-webapp-url').value.trim();
+            const folderId = document.getElementById('gdrive-folder-id').value.trim();
+
+            if (!url) {
+                showToast('Masukkan URL Web App Google Apps Script terlebih dahulu.', 'error');
+                return;
+            }
+            if (!url.startsWith('https://script.google.com/')) {
+                showToast('Format URL harus diawali dengan https://script.google.com/...', 'error');
+                return;
+            }
+
+            gdriveConfig = { webAppUrl: url, folderId: folderId };
+            localStorage.setItem(GDRIVE_CONFIG_KEY, JSON.stringify(gdriveConfig));
+            updateGDriveUI();
+            showToast('Integrasi Google Drive berhasil diaktifkan!', 'success');
+        }
+
+        function disconnectGoogleDrive() {
+            gdriveConfig = { webAppUrl: '', folderId: '' };
+            localStorage.removeItem(GDRIVE_CONFIG_KEY);
+            updateGDriveUI();
+            showToast('Koneksi Google Drive diputus. Beralih ke penyimpanan lokal browser.', 'info');
+        }
+
+        async function testGoogleDriveConnection() {
+            const url = document.getElementById('gdrive-webapp-url').value.trim() || gdriveConfig.webAppUrl;
+            const folderId = document.getElementById('gdrive-folder-id').value.trim() || gdriveConfig.folderId;
+
+            if (!url) {
+                showToast('Isi URL Web App Google Apps Script untuk menguji koneksi.', 'error');
+                return;
+            }
+
+            showToast('Menguji koneksi ke Google Drive...', 'info');
+            try {
+                const pingUrl = `${url}?action=ping&folderId=${encodeURIComponent(folderId)}`;
+                const response = await fetch(pingUrl);
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    showToast(`Koneksi Sukses! Terhubung ke folder Drive: "${data.folderName}"`, 'success');
+                } else {
+                    showToast('Respons tidak valid dari Apps Script. Pastikan akses diatur ke "Anyone".', 'error');
+                }
+            } catch (err) {
+                showToast('Gagal terhubung ke Google Drive. Periksa URL atau izin deployment Web App.', 'error');
+            }
+        }
+
+        async function uploadCardToGoogleDrive(cardRecord) {
+            if (!gdriveConfig.webAppUrl) return false;
+            try {
+                await fetch(gdriveConfig.webAppUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        nisn: cardRecord.nomor,
+                        nama: cardRecord.nama,
+                        folderId: gdriveConfig.folderId,
+                        imageData: cardRecord.imageData
+                    })
+                });
+                return true;
+            } catch (err) {
+                console.error('Gagal mengirim file ke Google Drive:', err);
+                return false;
+            }
+        }
+
+        function openGasModal() {
+            document.getElementById('gas-code-modal').classList.remove('hidden');
+        }
+
+        function closeGasModal() {
+            document.getElementById('gas-code-modal').classList.add('hidden');
+        }
+
+        function copyGasScript() {
+            const text = document.getElementById('gas-script-content').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('Kode Google Apps Script berhasil disalin ke clipboard!', 'success');
+        }
+
+        /**
+         * ==========================================
+         * LOGIKA PENCARIAN & DOWNLOAD PESERTA
+         * ==========================================
+         */
+        function handleSearch(event) {
+            event.preventDefault();
+            const query = document.getElementById('input-nomor-peserta').value.trim();
+            if (!query) return;
+            performSearch(query);
+        }
+
+        async function performSearch(query) {
+            const cleanQuery = query.trim().toLowerCase();
+            let found = cardsDatabase.find(item => item.nomor.toLowerCase() === cleanQuery);
+
+            const boxFound = document.getElementById('result-found');
+            const boxNotFound = document.getElementById('result-not-found');
+
+            // Jika tidak ada di cache lokal dan Google Drive aktif, cari langsung ke Google Drive
+            if (!found && gdriveConfig.webAppUrl) {
+                showToast('Mencari kartu di Google Drive...', 'info');
+                try {
+                    const searchUrl = `${gdriveConfig.webAppUrl}?action=search&nisn=${encodeURIComponent(query.trim())}&folderId=${encodeURIComponent(gdriveConfig.folderId)}`;
+                    const res = await fetch(searchUrl);
+                    const data = await res.json();
+                    if (data.status === 'found' && data.imageData) {
+                        found = {
+                            nomor: data.nisn,
+                            nama: data.nama,
+                            imageData: data.imageData
+                        };
+                    }
+                } catch (err) {
+                    console.error('Gagal mencari di Google Drive:', err);
+                }
+            }
+
+            if (found) {
+                currentFoundCard = found;
+                boxNotFound.classList.add('hidden');
+                boxFound.classList.remove('hidden');
+
+                document.getElementById('found-badge-nomor').textContent = `NISN: ${found.nomor}`;
+                document.getElementById('found-nama-peserta').textContent = found.nama || `Peserta NISN ${found.nomor}`;
+                document.getElementById('preview-card-image').src = found.imageData;
+
+                boxFound.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                currentFoundCard = null;
+                boxFound.classList.add('hidden');
+                boxNotFound.classList.remove('hidden');
+                document.getElementById('not-found-query').textContent = `"${query}"`;
+            }
+        }
+
+        function downloadCurrentCard() {
+            if (!currentFoundCard) return;
+
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                const ctx = canvas.getContext('2d');
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+
+                const jpgDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+                const link = document.createElement('a');
+                const safeNomor = currentFoundCard.nomor.replace(/[^a-zA-Z0-9_-]/g, '_');
+                link.download = `Kartu_Peserta_${safeNomor}.jpg`;
+                link.href = jpgDataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showToast(`Kartu peserta (${currentFoundCard.nomor}) berhasil diunduh!`, 'success');
+            };
+            img.src = currentFoundCard.imageData;
+        }
+
+        /**
+         * ==========================================
+         * LOGIKA UPLOAD GAMBAR & AUTO-OCR DETEKSI NISN
+         * ==========================================
+         */
+        function handleDragOver(event) {
+            event.preventDefault();
+            const zone = document.getElementById('ocr-dropzone');
+            zone.classList.add('border-blue-600', 'bg-blue-100/60', 'scale-[1.01]');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            const zone = document.getElementById('ocr-dropzone');
+            zone.classList.remove('border-blue-600', 'bg-blue-100/60', 'scale-[1.01]');
+        }
+
+        function handleDropFiles(event) {
+            event.preventDefault();
+            handleDragLeave(event);
+            const files = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) {
+                showToast('Harap seret file gambar yang valid (JPG atau PNG).', 'error');
+                return;
+            }
+            processCardImagesWithOCR(files);
+        }
+
+        function handleFilesSelected(event) {
+            const files = Array.from(event.target.files).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) return;
+            processCardImagesWithOCR(files);
+            event.target.value = ''; // reset input agar bisa pilih file sama lagi
+        }
+
+        /**
+         * Memproses gambar menggunakan Tesseract.js untuk mengekstrak NISN secara otomatis
+         */
+        async function processCardImagesWithOCR(files) {
+            if (isOcrProcessing) {
+                showToast('Proses pemindaian sedang berjalan, harap tunggu selesai.', 'info');
+                return;
+            }
+
+            if (typeof Tesseract === 'undefined') {
+                showToast('Library OCR belum siap. Periksa koneksi internet Anda.', 'error');
+                return;
+            }
+
+            isOcrProcessing = true;
+            const progressBox = document.getElementById('ocr-progress-box');
+            const progressBar = document.getElementById('ocr-progress-bar');
+            const statusText = document.getElementById('ocr-status-text');
+            const percentText = document.getElementById('ocr-percent-text');
+            const queueInfo = document.getElementById('ocr-queue-info');
+
+            progressBox.classList.remove('hidden');
+
+            let successCount = 0;
+            let fallbackCount = 0;
+
+            try {
+                // Inisialisasi worker Tesseract bahasa Inggris (optimal untuk membaca angka & huruf latin cetak)
+                statusText.textContent = 'Menyiapkan mesin OCR...';
+                const worker = await Tesseract.createWorker('eng', 1, {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const pct = Math.round((m.progress || 0) * 100);
+                            progressBar.style.width = `${pct}%`;
+                            percentText.textContent = `${pct}%`;
+                        }
+                    }
+                });
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    queueInfo.textContent = `Memproses gambar ${i + 1} dari ${files.length}: ${file.name}`;
+                    statusText.textContent = `Memindai NISN (${i + 1}/${files.length})...`;
+                    progressBar.style.width = '5%';
+                    percentText.textContent = '5%';
+
+                    // Baca & optimalkan resolusi gambar untuk OCR dan penyimpanan
+                    const { ocrImageDataUrl, compressedStorageDataUrl } = await prepareImageForOCR(file);
+
+                    // Jalankan OCR
+                    const result = await worker.recognize(ocrImageDataUrl);
+                    const rawText = result.data.text || '';
+
+                    // Ekstrak NISN & Nama dari hasil teks OCR
+                    const extracted = extractNISNFromText(rawText, file.name);
+
+                    const newRecord = {
+                        nomor: extracted.nisn,
+                        nama: extracted.nama || file.name.replace(/\.[^/.]+$/, ''),
+                        imageData: compressedStorageDataUrl,
+                        isSample: false,
+                        isAutoDetected: extracted.found,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    // Cek jika NISN sudah ada -> perbarui, jika belum -> tambahkan ke atas
+                    const existingIndex = cardsDatabase.findIndex(c => c.nomor.toLowerCase() === newRecord.nomor.toLowerCase());
+                    if (existingIndex !== -1) {
+                        cardsDatabase[existingIndex] = newRecord;
+                    } else {
+                        cardsDatabase.unshift(newRecord);
+                    }
+
+                    // Jika Google Drive terhubung, unggah otomatis ke folder Google Drive Anda
+                    if (gdriveConfig.webAppUrl) {
+                        statusText.textContent = `Mengunggah NISN ${newRecord.nomor} ke Google Drive...`;
+                        await uploadCardToGoogleDrive(newRecord);
+                    }
+
+                    if (extracted.found) {
+                        successCount++;
+                    } else {
+                        fallbackCount++;
+                    }
+                }
+
+                await worker.terminate();
+                saveDatabase();
+
+                if (fallbackCount === 0) {
+                    showToast(`Berhasil! ${successCount} kartu dipindai & NISN terdeteksi otomatis.`, 'success');
+                } else {
+                    showToast(`${successCount} NISN terdeteksi otomatis, ${fallbackCount} perlu verifikasi manual (klik ikon Edit).`, 'info');
+                }
+            } catch (err) {
+                console.error('OCR Error:', err);
+                showToast('Terjadi kesalahan saat memindai gambar. Coba unggah ulang gambar yang lebih jelas.', 'error');
+            } finally {
+                isOcrProcessing = false;
+                progressBox.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Menyiapkan gambar (grayscale kontras untuk akurasi OCR + versi terkompresi untuk localStorage)
+         */
+        function prepareImageForOCR(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        // 1. Versi terkompresi untuk disimpan di localStorage
+                        const maxStorageDim = 1100;
+                        let sw = img.width;
+                        let sh = img.height;
+                        if (sw > maxStorageDim || sh > maxStorageDim) {
+                            if (sw > sh) {
+                                sh = Math.round((sh * maxStorageDim) / sw);
+                                sw = maxStorageDim;
+                            } else {
+                                sw = Math.round((sw * maxStorageDim) / sh);
+                                sh = maxStorageDim;
+                            }
+                        }
+                        const storageCanvas = document.createElement('canvas');
+                        storageCanvas.width = sw;
+                        storageCanvas.height = sh;
+                        const sCtx = storageCanvas.getContext('2d');
+                        sCtx.fillStyle = '#ffffff';
+                        sCtx.fillRect(0, 0, sw, sh);
+                        sCtx.drawImage(img, 0, 0, sw, sh);
+                        const compressedStorageDataUrl = storageCanvas.toDataURL('image/jpeg', 0.88);
+
+                        // 2. Versi Grayscale + Peningkatan Kontras untuk OCR yang lebih tajam
+                        const ocrCanvas = document.createElement('canvas');
+                        const scale = img.width < 1000 ? 1.5 : 1; // Perbesar sedikit jika gambar kecil
+                        ocrCanvas.width = Math.round(img.width * scale);
+                        ocrCanvas.height = Math.round(img.height * scale);
+                        const oCtx = ocrCanvas.getContext('2d');
+                        oCtx.fillStyle = '#ffffff';
+                        oCtx.fillRect(0, 0, ocrCanvas.width, ocrCanvas.height);
+                        oCtx.drawImage(img, 0, 0, ocrCanvas.width, ocrCanvas.height);
+
+                        const imgData = oCtx.getImageData(0, 0, ocrCanvas.width, ocrCanvas.height);
+                        const data = imgData.data;
+                        const contrast = 1.25;
+                        const intercept = 128 * (1 - contrast);
+
+                        for (let i = 0; i < data.length; i += 4) {
+                            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                            const adjusted = Math.min(255, Math.max(0, gray * contrast + intercept));
+                            data[i] = adjusted;
+                            data[i + 1] = adjusted;
+                            data[i + 2] = adjusted;
+                        }
+                        oCtx.putImageData(imgData, 0, 0);
+                        const ocrImageDataUrl = ocrCanvas.toDataURL('image/jpeg', 0.95);
+
+                        resolve({ ocrImageDataUrl, compressedStorageDataUrl });
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        /**
+         * Ekstraksi Cerdas Nomor NISN dari Teks Hasil OCR
+         * Prioritas 1: Angka 10 digit di dekat kata "NISN"
+         * Prioritas 2: Semua urutan angka tepat 10 digit (standar NISN Nasional)
+         * Prioritas 3: Angka di dekat kata "Nomor Peserta" / "No. Peserta" (8-14 digit)
+         * Prioritas 4: Urutan angka panjang (8-12 digit) atau dari nama file
+         */
+        function extractNISNFromText(rawText, fileName = '') {
+            // Normalisasi karakter OCR yang sering tertukar di sekitar angka (misal huruf O menjadi 0)
+            const cleanedText = rawText.replace(/[|]/g, '1');
+
+            // 1. Cari pola eksplisit "NISN ... 10 digit"
+            const nisnLabelMatch = cleanedText.match(/NISN[^\d]{0,25}(\d{10})/i);
+            if (nisnLabelMatch && nisnLabelMatch[1]) {
+                return { nisn: nisnLabelMatch[1], nama: extractNameFromText(cleanedText), found: true };
+            }
+
+            // 2. Cari semua kandidat 10 digit angka berdiri sendiri (Standar baku NISN Indonesia = 10 digit)
+            const tenDigitMatches = cleanedText.match(/\b\d{10}\b/g);
+            if (tenDigitMatches && tenDigitMatches.length > 0) {
+                return { nisn: tenDigitMatches[0], nama: extractNameFromText(cleanedText), found: true };
+            }
+
+            // 3. Cari pola di dekat label "NOMOR PESERTA" / "NO PESERTA"
+            const pesertaLabelMatch = cleanedText.match(/(?:NOMOR|NO\.?)\s*PESERTA[^\d]{0,25}(\d{7,14})/i);
+            if (pesertaLabelMatch && pesertaLabelMatch[1]) {
+                return { nisn: pesertaLabelMatch[1], nama: extractNameFromText(cleanedText), found: true };
+            }
+
+            // 4. Cari urutan angka panjang lainnya (8 sampai 12 digit) di dalam teks kartu
+            const longDigitMatches = cleanedText.match(/\b\d{8,12}\b/g);
+            if (longDigitMatches && longDigitMatches.length > 0) {
+                return { nisn: longDigitMatches[0], nama: extractNameFromText(cleanedText), found: true };
+            }
+
+            // 5. Fallback: cek jika nama file mengandung 10 digit NISN
+            const fileMatch = fileName.match(/(\d{8,12})/);
+            if (fileMatch && fileMatch[1]) {
+                return { nisn: fileMatch[1], nama: extractNameFromText(cleanedText), found: true };
+            }
+
+            // Jika benar-benar tidak ada angka panjang yang terbaca
+            const fallbackCode = 'MANUAL-' + Math.floor(1000 + Math.random() * 9000);
+            return { nisn: fallbackCode, nama: fileName.replace(/\.[^/.]+$/, ''), found: false };
+        }
+
+        /**
+         * Mencoba mengekstrak nama peserta di dekat label NAMA jika tersedia di kartu
+         */
+        function extractNameFromText(text) {
+            const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+            for (let i = 0; i < lines.length; i++) {
+                if (/NAMA\s*(LENGKAP|PESERTA)?/i.test(lines[i])) {
+                    // Cek jika nama ada di baris yang sama setelah titik dua
+                    const sameLine = lines[i].replace(/.*NAMA\s*(LENGKAP|PESERTA)?\s*:?\s*/i, '').trim();
+                    if (sameLine.length >= 3 && !/^\d+$/.test(sameLine)) {
+                        return sameLine.replace(/[^a-zA-Z\s.,']/g, '').trim();
+                    }
+                    // Atau di baris berikutnya
+                    if (lines[i + 1] && lines[i + 1].length >= 3 && !/^\d+$/.test(lines[i + 1])) {
+                        return lines[i + 1].replace(/[^a-zA-Z\s.,']/g, '').trim();
+                    }
+                }
+            }
+            return '';
+        }
+
+        /**
+         * Render daftar kartu tersimpan pada tab Admin (dengan fitur Edit NISN inline)
+         */
+        function renderAdminList() {
+            const listContainer = document.getElementById('admin-cards-list');
+            listContainer.innerHTML = '';
+
+            if (cardsDatabase.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="p-10 text-center text-slate-500">
+                        <i class="fa-regular fa-folder-open text-3xl text-slate-300 mb-2"></i>
+                        <p class="text-sm font-medium">Belum ada kartu peserta tersimpan.</p>
+                        <p class="text-xs text-slate-400 mt-1">Seret dan lepas gambar kartu di panel kiri untuk memindai NISN secara otomatis.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            cardsDatabase.forEach((card, index) => {
+                const item = document.createElement('div');
+                item.className = 'p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/80 transition-colors';
+
+                // Badge status deteksi
+                let statusBadge = '';
+                if (card.isSample) {
+                    statusBadge = '<span class="text-[10px] font-semibold uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-0.5 rounded">Contoh</span>';
+                } else if (card.isAutoDetected === false) {
+                    statusBadge = '<span class="text-[10px] font-semibold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Perlu Koreksi</span>';
+                } else {
+                    statusBadge = '<span class="text-[10px] font-semibold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded"><i class="fa-solid fa-robot mr-1"></i>Auto-OCR</span>';
+                }
+
+                if (editingIndex === index) {
+                    // Mode Edit NISN Inline
+                    item.innerHTML = `
+                        <div class="flex items-center gap-4 w-full">
+                            <img src="${card.imageData}" alt="Preview" class="w-16 h-11 object-cover rounded-lg border border-slate-200 shrink-0">
+                            <div class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-slate-500">NISN / Nomor Kartu</label>
+                                    <input type="text" id="edit-nomor-${index}" value="${escapeHTML(card.nomor)}" class="w-full px-2.5 py-1.5 text-xs font-mono font-bold border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-slate-500">Keterangan / Nama</label>
+                                    <input type="text" id="edit-nama-${index}" value="${escapeHTML(card.nama)}" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button onclick="saveInlineEdit(${index})" title="Simpan Perubahan" class="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs cursor-pointer">
+                                    <i class="fa-solid fa-check"></i>
+                                </button>
+                                <button onclick="cancelInlineEdit()" title="Batal" class="p-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs cursor-pointer">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Mode Tampilan Normal
+                    item.innerHTML = `
+                        <div class="flex items-center gap-4 min-w-0">
+                            <img src="${card.imageData}" alt="${escapeHTML(card.nomor)}" class="w-16 h-11 object-cover rounded-lg border border-slate-200 shadow-xs shrink-0 bg-slate-100">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="font-mono font-bold text-sm text-blue-900 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
+                                        NISN: ${escapeHTML(card.nomor)}
+                                    </span>
+                                    ${statusBadge}
+                                </div>
+                                <p class="text-xs sm:text-sm font-semibold text-slate-700 truncate mt-1">${escapeHTML(card.nama || 'Kartu Peserta')}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                            <button 
+                                onclick="startInlineEdit(${index})" 
+                                title="Koreksi / Edit NISN"
+                                class="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button 
+                                onclick="quickPreviewFromAdmin('${escapeHTML(card.nomor)}')" 
+                                title="Uji Cari di Halaman Peserta"
+                                class="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <button 
+                                onclick="deleteCard(${index})" 
+                                title="Hapus Kartu"
+                                class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                listContainer.appendChild(item);
+            });
+        }
+
+        function startInlineEdit(index) {
+            editingIndex = index;
+            renderAdminList();
+        }
+
+        function cancelInlineEdit() {
+            editingIndex = null;
+            renderAdminList();
+        }
+
+        function saveInlineEdit(index) {
+            const newNomor = document.getElementById(`edit-nomor-${index}`).value.trim();
+            const newNama = document.getElementById(`edit-nama-${index}`).value.trim();
+
+            if (!newNomor) {
+                showToast('NISN / Nomor peserta tidak boleh kosong.', 'error');
+                return;
+            }
+
+            cardsDatabase[index].nomor = newNomor;
+            cardsDatabase[index].nama = newNama || `Peserta NISN ${newNomor}`;
+            cardsDatabase[index].isAutoDetected = true;
+            editingIndex = null;
+            saveDatabase();
+
+            // Sinkronkan perubahan NISN ke Google Drive jika aktif
+            if (gdriveConfig.webAppUrl) {
+                uploadCardToGoogleDrive(cardsDatabase[index]);
+            }
+
+            showToast(`NISN berhasil diperbarui menjadi ${newNomor}.`, 'success');
+        }
+
+        /**
+         * Melihat langsung kartu dari Admin ke tab Peserta
+         */
+        function quickPreviewFromAdmin(nomor) {
+            switchTab('peserta');
+            document.getElementById('input-nomor-peserta').value = nomor;
+            performSearch(nomor);
+        }
+
+        /**
+         * Menghapus satu data kartu
+         */
+        function deleteCard(index) {
+            const removed = cardsDatabase[index];
+            cardsDatabase.splice(index, 1);
+            if (editingIndex === index) editingIndex = null;
+            saveDatabase();
+            showToast(`Kartu peserta (${removed.nomor}) telah dihapus.`, 'info');
+
+            if (currentFoundCard && currentFoundCard.nomor === removed.nomor) {
+                document.getElementById('result-found').classList.add('hidden');
+                currentFoundCard = null;
+            }
+        }
+
+        /**
+         * Reset database kembali ke 3 data contoh bawaan
+         */
+        function resetDefaultData() {
+            editingIndex = null;
+            seedDefaultData();
+            document.getElementById('result-found').classList.add('hidden');
+            document.getElementById('result-not-found').classList.add('hidden');
+            document.getElementById('input-nomor-peserta').value = '';
+            showToast('Data kartu berhasil direset ke 3 contoh bawaan.', 'info');
+        }
+
+        /**
+         * Menampilkan notifikasi Toast yang halus
+         */
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const styles = {
+                success: 'bg-slate-900 text-white border-l-4 border-emerald-500',
+                error: 'bg-red-900 text-white border-l-4 border-red-400',
+                info: 'bg-slate-800 text-white border-l-4 border-blue-400'
+            };
+
+            const icons = {
+                success: 'fa-circle-check text-emerald-400',
+                error: 'fa-circle-exclamation text-red-300',
+                info: 'fa-circle-info text-blue-400'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3.5 rounded-xl shadow-xl text-sm font-medium animate-fade-in ${styles[type] || styles.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} text-base shrink-0"></i>
+                <span class="leading-snug">${escapeHTML(message)}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(8px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        /**
+         * Helper sanitasi teks HTML untuk mencegah XSS
+         */
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag]));
+        }
+
+        // Jalankan saat halaman selesai dimuat
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
